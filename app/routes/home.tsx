@@ -14,8 +14,5 @@ export default function Home() {
       <NavLink to="/login">login</NavLink>
       <NavLink to="/settings">settings</NavLink>
     </div>
-
   </>
-
-
 }
