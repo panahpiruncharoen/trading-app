@@ -1,4 +1,5 @@
 import type { Route } from "./+types/home";
+import { NavLink } from "react-router";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -8,5 +9,15 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  return <p>settings</p>;
+  const is_login = false;
+  return <>
+    <div id="top-bar" className="flex gap-5 me-5 mt-3 justify-end">
+      <NavLink to="/">home</NavLink>
+      <NavLink to="/exchanges">exchanges</NavLink>
+      <NavLink to="/chat">chat</NavLink>
+      <NavLink to="/history">history</NavLink>
+      <NavLink to="/profile">profile</NavLink>
+      <NavLink to="/settings" className="text-red-500">settings</NavLink>
+    </div>
+  </>
 }
