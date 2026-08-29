@@ -1,5 +1,18 @@
 import type { Route } from "./+types/home";
 import { NavLink } from "react-router";
+import { Button } from "~/components/ui/button"
+import { Field } from "~/components/ui/field"
+import { Input } from "~/components/ui/input"
+import { Label } from "~/components/ui/label"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card"
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -7,7 +20,29 @@ export function meta({}: Route.MetaArgs) {
     { name: "description", content: "Welcome to React Router!" },
   ];
 }
-
+function Post() {
+  return(
+    <Card className="w-1/2">
+      <CardHeader>
+        <CardTitle>Username</CardTitle>
+        <CardDescription>
+          Posted on ...
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        Information...
+      </CardContent>
+      <CardFooter className="flex-col gap-2">
+        <Button type="submit" className="w-full">
+          Accept
+        </Button>
+        <Button variant="outline" className="w-full">
+          Decline
+        </Button>
+      </CardFooter>
+    </Card>
+  )
+}
 export default function Home() {
   const is_login = false;
   return (
@@ -28,6 +63,17 @@ export default function Home() {
           </>
         )}
       </div>
+      <div className="w-full flex items-center justify-center m-5">
+        <Field orientation="horizontal" className="w-1/2">
+          <Input type="search" placeholder="Search..." />
+          <Button>Search</Button>
+        </Field>
+      </div>
+      <div className="w-full flex flex-col gap-4 items-center justify-center">
+        <Post/>
+        <Post/>
+      </div>
     </>
   );
+
 }
