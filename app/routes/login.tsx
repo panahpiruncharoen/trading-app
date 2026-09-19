@@ -39,6 +39,15 @@ export async function clientAction({
   return redirect("/");
 }
 
+export async function clientLoader() {
+  await auth.authStateReady()
+  const user = auth.currentUser
+  if(user) {
+    return redirect("/")
+  }
+
+  
+}
 export default function Home({ actionData }) {
   return (
     <div className="items-center justify-center w-full min-h-screen flex">
