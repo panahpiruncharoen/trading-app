@@ -1,3 +1,7 @@
+import { auth } from "./lib/firebase";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { useState, useEffect } from "react"
+import { UserContext } from "./lib/context";
 import {
   isRouteErrorResponse,
   Links,
@@ -42,7 +46,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet/>;
+  const [user, setUser] = useState<null | User>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+  return <UserContext value = {{user, loading}}>
+    <Outlet/>
+  </UserContext>
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

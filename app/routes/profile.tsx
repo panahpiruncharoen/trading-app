@@ -1,6 +1,17 @@
 import type { Route } from "./+types/home";
 import { NavLink } from "react-router";
+import { redirect, Form } from "react-router";
+import { auth } from "~/lib/firebase"
 
+export async function clientLoader() {
+  await auth.authStateReady()
+  const user = auth.currentUser
+  if(!user) {
+    return redirect("/login")
+  }
+
+  
+}
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "New React Router App" },
@@ -8,8 +19,7 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export default function Home() {
-  const is_login = false;
+export default function Profile() {
   return <>
     <div id="top-bar" className="flex gap-5 me-5 mt-3 justify-end">
       <NavLink to="/">home</NavLink>
