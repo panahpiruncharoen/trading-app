@@ -1,3 +1,5 @@
+import { useContext } from "react";
+import { UserContext } from "~/lib/context"
 import type { Route } from "./+types/home";
 import { NavLink } from "react-router";
 import { Button } from "~/components/ui/button"
@@ -44,11 +46,12 @@ function Post() {
   )
 }
 export default function Home() {
-  const is_login = false;
+  const {user, loading} = useContext(UserContext)
+  if( loading) {return null}
   return (
     <>
       <div id="top-bar" className="flex gap-5 me-5 mt-3 justify-end">
-        {is_login ? (
+        {user? (
           <>
             <NavLink to="/" className="text-red-500">home</NavLink>
             <NavLink to="/exchanges">exchanges</NavLink>
