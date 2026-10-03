@@ -48,7 +48,7 @@ export async function clientLoader() {
 
   
 }
-export default function Home({ actionData }) {
+export default function Login({ actionData }) {
   return (
     <div className="items-center justify-center w-full min-h-screen flex">
       <Card className="w-full max-w-sm">

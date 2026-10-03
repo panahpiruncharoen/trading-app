@@ -7,4 +7,5 @@ export default [
     route("exchanges", "routes/exchanges.tsx"),
     route("chat", "routes/chat.tsx"),
     route("history", "routes/history.tsx"),
+    route("signup", "routes/signup.tsx"),
 ] satisfies RouteConfig;
