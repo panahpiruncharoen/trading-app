@@ -4,6 +4,7 @@ import { useContext } from "react";
 import { UserContext } from "~/lib/context"
 import type { Route } from "./+types/home";
 import { NavLink } from "react-router";
+import { LogoutButton } from "~/components/logout-button"
 import { Button } from "~/components/ui/button"
 import { Field } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
@@ -73,6 +74,7 @@ export default function Home({loaderData}) {
             <NavLink to="/history">history</NavLink>
             <NavLink to="/profile">profile</NavLink>
             <NavLink to="/settings">settings</NavLink>
+            <LogoutButton />
           </>
         ) : (
           <>
