@@ -2,6 +2,7 @@ import type { Route } from "./+types/home";
 import { NavLink } from "react-router";
 import { redirect, Form } from "react-router";
 import { auth } from "~/lib/firebase"
+import { LogoutButton } from "~/components/logout-button"
 
 export async function clientLoader() {
   await auth.authStateReady()
@@ -29,6 +30,7 @@ export default function History() {
       <NavLink to="/history" className="text-red-500">history</NavLink>
       <NavLink to="/profile">profile</NavLink>
       <NavLink to="/settings">settings</NavLink>
+      <LogoutButton />
     </div>
   </>
 }
