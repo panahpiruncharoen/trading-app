@@ -1,3 +1,5 @@
+import { collection, getDocs, Timestamp } from "firebase/firestore";
+import { db } from "~/lib/firebase"
 import { useContext } from "react";
 import { UserContext } from "~/lib/context"
 import type { Route } from "./+types/home";
@@ -16,23 +18,35 @@ import {
   CardTitle,
 } from "~/components/ui/card"
 
+
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "New React Router App" },
     { name: "description", content: "Welcome to React Router!" },
   ];
 }
-function Post() {
+
+export async function clientLoader() {
+  const posts = await getDocs(collection(db, "posts"))
+  const array = []
+  posts.forEach((post)=>{
+    array.push(post.data())
+
+  })
+  return array;
+}
+
+function Post({username, timestamp, content}) {
   return(
     <Card className="w-1/2">
       <CardHeader>
-        <CardTitle>Username</CardTitle>
+        <CardTitle>{username}</CardTitle>
         <CardDescription>
-          Posted on ...
+          Posted on {timestamp}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        Information...
+        {content}
       </CardContent>
       <CardFooter className="flex-col gap-2">
         <Button type="submit" className="w-full">
@@ -45,7 +59,7 @@ function Post() {
     </Card>
   )
 }
-export default function Home() {
+export default function Home({loaderData}) {
   const {user, loading} = useContext(UserContext)
   if( loading) {return null}
   return (
@@ -73,8 +87,9 @@ export default function Home() {
         </Field>
       </div>
       <div className="w-full flex flex-col gap-4 items-center justify-center">
-        <Post/>
-        <Post/>
+        {loaderData.map((post)=>{
+          return <Post username={post.uid} timestamp={post.timestamp.seconds} content={post.content}/>
+        })}
       </div>
     </>
   );
