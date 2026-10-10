@@ -1,8 +1,9 @@
 import type { Route } from "./+types/home";
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import { redirect, Form } from "react-router";
 import { auth } from "~/lib/firebase"
 import { LogoutButton } from "~/components/logout-button"
+import { Button } from "~/components/ui/button"
 
 export async function clientLoader() {
   await auth.authStateReady()
@@ -22,6 +23,7 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Exchanges() {
+  const navigate = useNavigate()
   return <>
     <div id="top-bar" className="flex gap-5 me-5 mt-3 justify-end">
       <NavLink to="/">home</NavLink>
@@ -31,6 +33,9 @@ export default function Exchanges() {
       <NavLink to="/profile">profile</NavLink>
       <NavLink to="/settings">settings</NavLink>
       <LogoutButton />
+    </div>
+    <div className="flex justify-end me-5 mt-3">
+      <Button type="button" onClick={() => navigate("/post")}>Post</Button>
     </div>
   </>
 }
