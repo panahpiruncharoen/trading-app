@@ -3,8 +3,7 @@ import { db } from "~/lib/firebase"
 import { useContext } from "react";
 import { UserContext } from "~/lib/context"
 import type { Route } from "./+types/home";
-import { NavLink, useNavigate } from "react-router";
-import { LogoutButton } from "~/components/logout-button"
+import { NavLink } from "react-router";
 import { Button } from "~/components/ui/button"
 import { Field } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
@@ -62,7 +61,6 @@ function Post({username, timestamp, content}) {
 }
 export default function Home({loaderData}) {
   const {user, loading} = useContext(UserContext)
-  const navigate = useNavigate()
   if( loading) {return null}
   return (
     <>
@@ -75,7 +73,6 @@ export default function Home({loaderData}) {
             <NavLink to="/history">history</NavLink>
             <NavLink to="/profile">profile</NavLink>
             <NavLink to="/settings">settings</NavLink>
-            <LogoutButton />
           </>
         ) : (
           <>
@@ -87,17 +84,17 @@ export default function Home({loaderData}) {
         <Field orientation="horizontal" className="w-1/2">
           <Input type="search" placeholder="Search..." />
           <Button>Search</Button>
-          {user && (
-            <Button type="button" variant="outline" onClick={() => navigate("/post")}>Post</Button>
-          )}
         </Field>
       </div>
       <div className="w-full flex flex-col gap-4 items-center justify-center">
         {loaderData.map((post)=>{
-          return <Post username={post.title} timestamp={new Date(post.timestamp.seconds * 1000).toLocaleDateString("en-GB")} content={post.content}/>
+          return <Post username={post.uid} timestamp={post.timestamp.toDate().toLocaleDateString("en-GB")} content={post.content}/>
+          // return <Post username={post.uid} timestamp={post.timestamp.seconds} content={post.content}/>
+          // return <Post username={post.title} timestamp={new Date(post.timestamp.seconds * 1000).toLocaleDateString("en-GB")} content={post.content}/>
         })}
       </div>
     </>
   );
 
 }
+
