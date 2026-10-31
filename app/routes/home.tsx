@@ -1,4 +1,4 @@
-import { collection, getDocs, Timestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "~/lib/firebase"
 import { useContext } from "react";
 import { UserContext } from "~/lib/context"
@@ -29,15 +29,14 @@ export function meta({}: Route.MetaArgs) {
 
 export async function clientLoader() {
   const posts = await getDocs(collection(db, "posts"))
-  const array = []
-  posts.forEach((post)=>{
-    array.push(post.data())
-
-  })
-  return array;
+  return Promise.all(posts.docs.map(async (post)=>{
+    const data = post.data()
+    const author = await getDoc(doc(db, "users", data.uid))
+    return {...data, username: `${author.data()?.firstName ?? ""} ${author.data()?.lastName ?? ""}`.trim()}
+  }))
 }
 
-function Post({username, timestamp, content}) {
+function Post({username, title, timestamp, content}) {
   return(
     <Card className="w-1/2">
       <CardHeader>
@@ -47,6 +46,7 @@ function Post({username, timestamp, content}) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <p className="font-semibold">{title}</p>
         {content}
       </CardContent>
       <CardFooter className="flex-col gap-2">
@@ -94,7 +94,7 @@ export default function Home({loaderData}) {
       </div>
       <div className="w-full flex flex-col gap-4 items-center justify-center">
         {loaderData.map((post)=>{
-          return <Post username={post.uid} timestamp={post.timestamp.seconds} content={post.content}/>
+          return <Post username={post.username} title={post.title} timestamp={post.timestamp.toDate().toLocaleDateString("en-GB")} content={post.content}/>
         })}
       </div>
     </>
