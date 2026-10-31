@@ -80,6 +80,7 @@ export default function Home({loaderData}) {
         ) : (
           <>
             <NavLink to="/login">login</NavLink>
+            <NavLink to="/signup">signup</NavLink>
           </>
         )}
       </div>
