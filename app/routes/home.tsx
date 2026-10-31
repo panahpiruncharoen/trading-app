@@ -94,13 +94,10 @@ export default function Home({loaderData}) {
       </div>
       <div className="w-full flex flex-col gap-4 items-center justify-center">
         {loaderData.map((post)=>{
-          return <Post username={post.uid} timestamp={post.timestamp.toDate().toLocaleDateString("en-GB")} content={post.content}/>
-          // return <Post username={post.uid} timestamp={post.timestamp.seconds} content={post.content}/>
-          // return <Post username={post.title} timestamp={new Date(post.timestamp.seconds * 1000).toLocaleDateString("en-GB")} content={post.content}/>
+          return <Post username={post.title} timestamp={post.timestamp.toDate().toLocaleDateString("en-GB")} content={post.content}/>
         })}
       </div>
     </>
   );
 
 }
-
