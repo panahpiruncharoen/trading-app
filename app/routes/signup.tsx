@@ -21,6 +21,7 @@ import {
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { auth, db } from "~/lib/firebase"
+import { CountryList } from "~/lib/countries"
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
@@ -82,12 +83,7 @@ export async function clientLoader() {
 
   
 }
-const CountryList = [
-  { label: "America", value: "America" },
-  { label: "Thailand", value: "Thailand" },
-  { label: "China", value: "China" },
-]
- 
+
 export default function SignUp({ actionData }) {
   return (
     <div className="items-center justify-center w-full min-h-screen flex">
