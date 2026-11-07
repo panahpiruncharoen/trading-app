@@ -122,10 +122,11 @@ export default function Profile({ loaderData, actionData }: Route.ComponentProps
           </CardDescription>
           {!isEditing && (
             <CardAction className="flex gap-2">
-              {!isOwnProfile && (
+              {isOwnProfile ? (
+                <Button type="button" variant="outline" disabled={!isOwnProfile} onClick={() => setSearchParams({edit: "true"})}>Edit</Button>
+              ) : (
                 <Button type="button" onClick={() => navigate("/chat")}>Chat</Button>
               )}
-              <Button type="button" variant="outline" disabled={!isOwnProfile} onClick={() => setSearchParams({edit: "true"})}>Edit</Button>
             </CardAction>
           )}
         </CardHeader>
