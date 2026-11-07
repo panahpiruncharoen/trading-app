@@ -36,11 +36,13 @@ export async function clientLoader() {
   }))
 }
 
-function Post({username, title, timestamp, content}) {
+function Post({uid, username, title, timestamp, content}) {
   return(
     <Card className="w-1/2">
       <CardHeader>
-        <CardTitle>{username}</CardTitle>
+        <CardTitle>
+          <NavLink to={`/profile/${uid}`} className="hover:underline">{username}</NavLink>
+        </CardTitle>
         <CardDescription>
           Posted on {timestamp}
         </CardDescription>
@@ -95,7 +97,7 @@ export default function Home({loaderData}) {
       </div>
       <div className="w-full flex flex-col gap-4 items-center justify-center">
         {loaderData.map((post)=>{
-          return <Post username={post.username} title={post.title} timestamp={post.timestamp.toDate().toLocaleDateString("en-GB")} content={post.content}/>
+          return <Post uid={post.uid} username={post.username} title={post.title} timestamp={post.timestamp.toDate().toLocaleDateString("en-GB")} content={post.content}/>
         })}
       </div>
     </>
