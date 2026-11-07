@@ -1,5 +1,5 @@
 import type { Route } from "./+types/profile";
-import { NavLink, useSearchParams } from "react-router";
+import { NavLink, useNavigate, useSearchParams } from "react-router";
 import { redirect, Form } from "react-router";
 import { auth, db } from "~/lib/firebase"
 import { CountryList } from "~/lib/countries"
@@ -27,20 +27,24 @@ import {
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 
-export async function clientLoader() {
+export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   await auth.authStateReady()
   const user = auth.currentUser
   if(!user) {
     return redirect("/login")
   }
-  const profile = await getDoc(doc(db, "users", user.uid))
+  const uid = params.uid ?? user.uid
+  const isOwnProfile = uid === user.uid
+  const profile = await getDoc(doc(db, "users", uid))
   const data = profile.data()
   return {
+    uid,
+    isOwnProfile,
     firstName: data?.firstName ?? "",
     lastName: data?.lastName ?? "",
     country: data?.country ?? "",
     phoneNumber: data?.phoneNumber ?? "",
-    email: user.email ?? "",
+    email: (isOwnProfile ? user.email : data?.email) ?? "",
     createdAt: data?.createdAt?.toDate().toLocaleDateString("en-GB") ?? "",
   }
 }
@@ -95,7 +99,10 @@ function ProfileRow({label, value}: {label: string, value: string}) {
 
 export default function Profile({ loaderData, actionData }: Route.ComponentProps) {
   const [searchParams, setSearchParams] = useSearchParams()
-  const isEditing = searchParams.has("edit")
+  const navigate = useNavigate()
+  const { isOwnProfile } = loaderData
+  // only the owner can edit, even if ?edit is in the url
+  const isEditing = isOwnProfile && searchParams.has("edit")
   return <>
     <div id="top-bar" className="flex gap-5 me-5 mt-3 justify-end">
       <NavLink to="/">home</NavLink>
@@ -111,11 +118,14 @@ export default function Profile({ loaderData, actionData }: Route.ComponentProps
         <CardHeader>
           <CardTitle>Profile</CardTitle>
           <CardDescription>
-            {isEditing ? "Update your information below" : "Your account information"}
+            {isEditing ? "Update your information below" : isOwnProfile ? "Your account information" : "Account information"}
           </CardDescription>
           {!isEditing && (
-            <CardAction>
-              <Button type="button" variant="outline" onClick={() => setSearchParams({edit: "true"})}>Edit</Button>
+            <CardAction className="flex gap-2">
+              {!isOwnProfile && (
+                <Button type="button" onClick={() => navigate("/chat")}>Chat</Button>
+              )}
+              <Button type="button" variant="outline" disabled={!isOwnProfile} onClick={() => setSearchParams({edit: "true"})}>Edit</Button>
             </CardAction>
           )}
         </CardHeader>
