@@ -10,7 +10,6 @@ import {
   doc,
   getDoc,
   onSnapshot,
-  or,
   query,
   serverTimestamp,
   where,
@@ -103,23 +102,36 @@ function useMessages(uid: string | undefined) {
   const [messages, setMessages] = useState<Message[]>([])
   useEffect(() => {
     if (!uid) return
-    const q = query(collection(db, "chats"), or(where("from", "==", uid), where("to", "==", uid)))
-    return onSnapshot(q, (snapshot) => {
-      const messages = snapshot.docs.map((message) => {
-        // estimate so our own message shows up before the server sets the timestamp
-        const data = message.data({ serverTimestamps: "estimate" })
-        return {
-          id: message.id,
-          chatId: data.chatId,
-          content: data.content,
-          from: data.from,
-          to: data.to,
-          timestamp: data.timestamp?.toDate() ?? new Date(),
+    // two separate queries instead of or(), so each one matches the security rules exactly
+    const sent = new Map<string, Message>()
+    const received = new Map<string, Message>()
+    function listen(field: "from" | "to", into: Map<string, Message>) {
+      const q = query(collection(db, "chats"), where(field, "==", uid))
+      return onSnapshot(q, (snapshot) => {
+        into.clear()
+        for (const message of snapshot.docs) {
+          // estimate so our own message shows up before the server sets the timestamp
+          const data = message.data({ serverTimestamps: "estimate" })
+          into.set(message.id, {
+            id: message.id,
+            chatId: data.chatId,
+            content: data.content,
+            from: data.from,
+            to: data.to,
+            timestamp: data.timestamp?.toDate() ?? new Date(),
+          })
         }
-      })
-      messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-      setMessages(messages)
-    }, (error) => console.error(error))
+        const messages = [...new Map([...sent, ...received]).values()]
+        messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+        setMessages(messages)
+      }, (error) => console.error(`chats where ${field} == uid:`, error))
+    }
+    const unsubscribeSent = listen("from", sent)
+    const unsubscribeReceived = listen("to", received)
+    return () => {
+      unsubscribeSent()
+      unsubscribeReceived()
+    }
   }, [uid])
   return messages
 }
