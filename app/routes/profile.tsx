@@ -125,7 +125,7 @@ export default function Profile({ loaderData, actionData }: Route.ComponentProps
               {isOwnProfile ? (
                 <Button type="button" variant="outline" disabled={!isOwnProfile} onClick={() => setSearchParams({edit: "true"})}>Edit</Button>
               ) : (
-                <Button type="button" onClick={() => navigate("/chat")}>Chat</Button>
+                <Button type="button" onClick={() => navigate(`/chat/${loaderData.uid}`)}>Chat</Button>
               )}
             </CardAction>
           )}

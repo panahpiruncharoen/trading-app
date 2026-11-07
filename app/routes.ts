@@ -5,7 +5,7 @@ export default [
     route("settings", "routes/settings.tsx"),
     route("profile/:uid?", "routes/profile.tsx"),
     route("exchanges", "routes/exchanges.tsx"),
-    route("chat", "routes/chat.tsx"),
+    route("chat/:uid?", "routes/chat.tsx"),
     route("history", "routes/history.tsx"),
     route("signup", "routes/signup.tsx"),
     route("post", "routes/post.tsx"),
