@@ -11,8 +11,10 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read: if true;
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid','title','content','timestamp'])
+        && request.resource.data.keys().hasOnly(['uid','type','title','content','timestamp'])
         && request.resource.data.uid == request.auth.uid
+        // keep in sync with app/lib/post-types.ts
+        && request.resource.data.type in ['exchange', 'donation', 'request']
         && str(request.resource.data.title, 200)
         && str(request.resource.data.content, 5000)
         && request.resource.data.timestamp == request.time;
