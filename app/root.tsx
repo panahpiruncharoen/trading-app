@@ -27,6 +27,17 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
+// sent with every page; static assets are served separately and don't need them
+export const headers: Route.HeadersFunction = () => ({
+  // stop other sites from embedding the app in a frame (clickjacking)
+  "Content-Security-Policy": "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+  "X-Frame-Options": "DENY",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  "Strict-Transport-Security": "max-age=31536000",
+});
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">

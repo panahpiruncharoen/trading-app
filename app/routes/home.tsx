@@ -1,5 +1,5 @@
-import { collection, doc, getDoc, getDocs, Timestamp } from "firebase/firestore";
-import { db } from "~/lib/firebase"
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, Timestamp } from "firebase/firestore";
+import { auth, db } from "~/lib/firebase"
 import { useContext } from "react";
 import { UserContext } from "~/lib/context"
 import type { Route } from "./+types/home";
@@ -28,11 +28,25 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function clientLoader() {
-  const posts = await getDocs(collection(db, "posts"))
+  await auth.authStateReady()
+  // newest posts only, so the page never loads the whole collection
+  const posts = await getDocs(query(collection(db, "posts"), orderBy("timestamp", "desc"), limit(20)))
+  // each author is looked up once, even if they wrote several posts
+  const usernames = new Map<string, Promise<string>>()
+  function getUsername(uid: string) {
+    if (!usernames.has(uid)) {
+      usernames.set(uid, getDoc(doc(db, "users", uid)).then((author) =>
+        `${author.data()?.firstName ?? ""} ${author.data()?.lastName ?? ""}`.trim()))
+    }
+    return usernames.get(uid)!
+  }
   return Promise.all(posts.docs.map(async (post)=>{
     const data = post.data()
-    const author = await getDoc(doc(db, "users", data.uid))
-    return {...data, username: `${author.data()?.firstName ?? ""} ${author.data()?.lastName ?? ""}`.trim()}
+    // users can only be read when signed in, see firestore.rules
+    if (!auth.currentUser) {
+      return {...data, username: "Member"}
+    }
+    return {...data, username: await getUsername(data.uid)}
   }))
 }
 

@@ -4,6 +4,7 @@ import { initializeApp } from "firebase/app";
 // https://firebase.google.com/docs/web/setup#available-libraries
 import {getAuth} from "firebase/auth";
 import {getFirestore} from "firebase/firestore";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA-3L0-LhJcux5XSU1xwcV-JXoS4V2wXuc",
@@ -16,5 +17,19 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// App Check proves requests come from this site; it only runs in the browser
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
+if (typeof window !== "undefined" && recaptchaSiteKey) {
+  if (import.meta.env.DEV) {
+    // localhost can't pass reCAPTCHA, so this prints a debug token in the console to register in Firebase
+    (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true
+  }
+  initializeAppCheck(app, {
+    provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  })
+}
+
 export const auth = getAuth(app)
 export const db = getFirestore(app)

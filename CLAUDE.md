@@ -18,6 +18,24 @@ Fields:
 - lastName: string
 - phoneNumber: string
 
+### Subcollection: blocked
+
+Path: /users/{uid}/blocked/{blockedUid}
+
+Users that {uid} has blocked from sending them messages.
+
+Fields:
+- createdAt: timestamp
+
+## Collections: rateLimits
+
+Path: /rateLimits/{uid}
+
+Written in the same batch as every chat message; the rules reject a message sent less than 2 seconds after the previous one.
+
+Fields:
+- lastMessageAt: timestamp
+
 ## Collections: posts
 
 Path: /posts/{postId}

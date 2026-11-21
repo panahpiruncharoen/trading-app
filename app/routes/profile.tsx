@@ -4,7 +4,7 @@ import { redirect, Form } from "react-router";
 import { auth, db } from "~/lib/firebase"
 import { CountryList } from "~/lib/countries"
 import { updateProfile } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { deleteDoc, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { LogoutButton } from "~/components/logout-button"
 import { Button } from "~/components/ui/button"
 import {
@@ -37,9 +37,11 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const isOwnProfile = uid === user.uid
   const profile = await getDoc(doc(db, "users", uid))
   const data = profile.data()
+  const isBlocked = !isOwnProfile && (await getDoc(doc(db, "users", user.uid, "blocked", uid))).exists()
   return {
     uid,
     isOwnProfile,
+    isBlocked,
     firstName: data?.firstName ?? "",
     lastName: data?.lastName ?? "",
     country: data?.country ?? "",
@@ -51,6 +53,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 
 export async function clientAction({
   request,
+  params,
 }: Route.ClientActionArgs) {
   await auth.authStateReady()
   const user = auth.currentUser
@@ -58,6 +61,25 @@ export async function clientAction({
     return redirect("/login")
   }
   const formData = await request.formData();
+  const intent = formData.get("intent")
+  if (intent === "block" || intent === "unblock") {
+    if (!params.uid || params.uid === user.uid) {
+      return null
+    }
+    // blocked users can't send this user new messages, see firestore.rules
+    const blocked = doc(db, "users", user.uid, "blocked", params.uid)
+    try {
+      if (intent === "block") {
+        await setDoc(blocked, { createdAt: serverTimestamp() })
+      } else {
+        await deleteDoc(blocked)
+      }
+    } catch (error) {
+      console.error(error)
+      return "Could not update, please try again"
+    }
+    return null
+  }
   const firstName = String(formData.get("firstName") ?? "").trim();
   const lastName = String(formData.get("lastName") ?? "").trim();
   const country = String(formData.get("country") ?? "");
@@ -125,7 +147,13 @@ export default function Profile({ loaderData, actionData }: Route.ComponentProps
               {isOwnProfile ? (
                 <Button type="button" variant="outline" disabled={!isOwnProfile} onClick={() => setSearchParams({edit: "true"})}>Edit</Button>
               ) : (
-                <Button type="button" onClick={() => navigate(`/chat/${loaderData.uid}`)}>Chat</Button>
+                <>
+                  <Button type="button" onClick={() => navigate(`/chat/${loaderData.uid}`)}>Chat</Button>
+                  <Form method="post">
+                    <input type="hidden" name="intent" value={loaderData.isBlocked ? "unblock" : "block"} />
+                    <Button type="submit" variant="outline">{loaderData.isBlocked ? "Unblock" : "Block"}</Button>
+                  </Form>
+                </>
               )}
             </CardAction>
           )}
@@ -208,6 +236,7 @@ export default function Profile({ loaderData, actionData }: Route.ComponentProps
               <ProfileRow label="Email" value={loaderData.email} />
               <ProfileRow label="Member since" value={loaderData.createdAt} />
             </div>
+            {actionData}
           </CardContent>
         )}
       </Card>
