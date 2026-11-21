@@ -41,7 +41,9 @@ export async function clientLoader() {
     }
     return usernames.get(uid)!
   }
-  return Promise.all(posts.docs.map(async (post)=>{
+  // your own posts are on your profile page instead
+  const otherPosts = posts.docs.filter((post) => post.data().uid !== auth.currentUser?.uid)
+  return Promise.all(otherPosts.map(async (post)=>{
     const data = post.data()
     // users can only be read when signed in, see firestore.rules
     if (!auth.currentUser) {

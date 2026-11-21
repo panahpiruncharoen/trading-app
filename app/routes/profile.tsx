@@ -4,7 +4,7 @@ import { redirect, Form } from "react-router";
 import { auth, db } from "~/lib/firebase"
 import { CountryList } from "~/lib/countries"
 import { updateProfile } from "firebase/auth";
-import { deleteDoc, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { LogoutButton } from "~/components/logout-button"
 import { Button } from "~/components/ui/button"
 import {
@@ -26,6 +26,7 @@ import {
 } from "~/components/ui/select"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
+import { getPostType } from "~/lib/post-types"
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   await auth.authStateReady()
@@ -38,6 +39,18 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const profile = await getDoc(doc(db, "users", uid))
   const data = profile.data()
   const isBlocked = !isOwnProfile && (await getDoc(doc(db, "users", user.uid, "blocked", uid))).exists()
+  // sorted here rather than with orderBy, which would need a composite index
+  const postDocs = await getDocs(query(collection(db, "posts"), where("uid", "==", uid)))
+  const posts = postDocs.docs
+    .map((post) => ({ id: post.id, ...post.data() }))
+    .sort((a, b) => (b.timestamp?.toMillis() ?? 0) - (a.timestamp?.toMillis() ?? 0))
+    .map((post) => ({
+      id: post.id,
+      type: post.type,
+      title: post.title ?? "",
+      content: post.content ?? "",
+      timestamp: post.timestamp?.toDate().toLocaleDateString("en-GB") ?? "",
+    }))
   return {
     uid,
     isOwnProfile,
@@ -48,6 +61,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
     phoneNumber: data?.phoneNumber ?? "",
     email: (isOwnProfile ? user.email : data?.email) ?? "",
     createdAt: data?.createdAt?.toDate().toLocaleDateString("en-GB") ?? "",
+    posts,
   }
 }
 
@@ -62,6 +76,22 @@ export async function clientAction({
   }
   const formData = await request.formData();
   const intent = formData.get("intent")
+  if (intent === "editPost") {
+    const postId = String(formData.get("postId") ?? "")
+    const title = String(formData.get("title") ?? "").trim()
+    const content = String(formData.get("content") ?? "").trim()
+    if (!postId || !title || !content) {
+      return "Please fill in all fields"
+    }
+    try {
+      // only the author can update, and only title and content, see firestore.rules
+      await updateDoc(doc(db, "posts", postId), { title, content })
+    } catch (error) {
+      console.error(error)
+      return "Could not save your post, please try again"
+    }
+    return redirect("/profile")
+  }
   if (intent === "block" || intent === "unblock") {
     if (!params.uid || params.uid === user.uid) {
       return null
@@ -119,12 +149,91 @@ function ProfileRow({label, value}: {label: string, value: string}) {
   )
 }
 
+type ProfilePostProps = {
+  id: string,
+  type: unknown,
+  title: string,
+  timestamp: string,
+  content: string,
+  canEdit: boolean,
+  isEditing: boolean,
+  error: string | null | undefined,
+  onEdit: () => void,
+  onCancel: () => void,
+}
+
+function ProfilePost({id, type, title, timestamp, content, canEdit, isEditing, error, onEdit, onCancel}: ProfilePostProps) {
+  // posts made before types existed have no type
+  const postType = getPostType(type)
+  if (isEditing) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Edit post</CardTitle>
+          <CardDescription>Posted on {timestamp}</CardDescription>
+        </CardHeader>
+        <Form method="post">
+          <input type="hidden" name="intent" value="editPost" />
+          <input type="hidden" name="postId" value={id} />
+          <CardContent>
+            <div className="flex flex-col gap-6">
+              <div className="grid gap-2">
+                <Label htmlFor={`title-${id}`}>Title</Label>
+                <Input id={`title-${id}`} type="text" name="title" defaultValue={title} maxLength={200} required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`content-${id}`}>Information</Label>
+                <textarea
+                  id={`content-${id}`}
+                  name="content"
+                  rows={5}
+                  defaultValue={content}
+                  maxLength={5000}
+                  className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  required
+                />
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="flex-col gap-2 mt-6">
+            <Button type="submit" className="w-full">Save</Button>
+            <Button type="button" variant="outline" className="w-full" onClick={onCancel}>Cancel</Button>
+            {error}
+          </CardFooter>
+        </Form>
+      </Card>
+    )
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>Posted on {timestamp}</CardDescription>
+        {(postType || canEdit) && (
+          <CardAction className="flex items-center gap-2">
+            {postType && (
+              <span className="rounded-full border px-2.5 py-0.5 text-xs font-medium">{postType.label}</span>
+            )}
+            {canEdit && (
+              <Button type="button" variant="outline" size="sm" onClick={onEdit}>Edit</Button>
+            )}
+          </CardAction>
+        )}
+      </CardHeader>
+      <CardContent>
+        <p className="whitespace-pre-wrap">{content}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function Profile({ loaderData, actionData }: Route.ComponentProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { isOwnProfile } = loaderData
   // only the owner can edit, even if ?edit is in the url
   const isEditing = isOwnProfile && searchParams.has("edit")
+  const editingPostId = isOwnProfile ? searchParams.get("editPost") : null
   return <>
     <div id="top-bar" className="flex gap-5 me-5 mt-3 justify-end">
       <NavLink to="/">home</NavLink>
@@ -135,8 +244,8 @@ export default function Profile({ loaderData, actionData }: Route.ComponentProps
       <NavLink to="/settings">settings</NavLink>
       <LogoutButton />
     </div>
-    <div className="w-full flex justify-center mt-10">
-      <Card className="w-1/2">
+    <div className="w-full flex justify-center items-start gap-6 mt-10 px-5">
+      <Card className="w-2/5">
         <CardHeader>
           <CardTitle>Profile</CardTitle>
           <CardDescription>
@@ -236,10 +345,28 @@ export default function Profile({ loaderData, actionData }: Route.ComponentProps
               <ProfileRow label="Email" value={loaderData.email} />
               <ProfileRow label="Member since" value={loaderData.createdAt} />
             </div>
-            {actionData}
+            {!editingPostId && actionData}
           </CardContent>
         )}
       </Card>
+      <div className="w-2/5 flex flex-col gap-4">
+        <h2 className="font-semibold">{isOwnProfile ? "Your posts" : "Posts"}</h2>
+        {loaderData.posts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No posts yet</p>
+        ) : (
+          loaderData.posts.map((post) => (
+            <ProfilePost
+              key={post.id}
+              {...post}
+              canEdit={isOwnProfile}
+              isEditing={post.id === editingPostId}
+              error={post.id === editingPostId ? actionData : null}
+              onEdit={() => setSearchParams({editPost: post.id})}
+              onCancel={() => setSearchParams({})}
+            />
+          ))
+        )}
+      </div>
     </div>
   </>
 }
