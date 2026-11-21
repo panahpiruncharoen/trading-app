@@ -1,3 +1,9 @@
+# Trading-app
+This app is made for people in need. The main function of this website is 
+1. trading - One user proposes an exchange, specifying what they have to give and what they want in return. Another user can then accept the trade. Both sides will then perform the exchange in real life.
+2. giving - One user lists some things they want to give away. Another user can then accept the donation, and the giver will send the things to them in real life.
+3. receiving - One user requests some things they need. Another user can then accept the request, and send the requested items to them in real life.
+
 # Development Environment
 Conda environment named "websites"
 
@@ -45,6 +51,7 @@ Fields:
 - timestamp: timestamp
 - title: string
 - uid: string
+- type: string ("exchange", "donation", "request")
 
 ## Collections: chats
 
