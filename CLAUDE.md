@@ -68,5 +68,5 @@ Fields:
 - to: string (uid of the receiver)
 
 # Image storage path pattern
-images/{uid}/posts/{postId}/{filename}
-Notes: maximum images per post is 5
+images/{uid}/posts/{postId}/{index}
+Notes: maximum images per post is 5. Files are named by their index (0-4), which is how storage.rules enforces the limit.

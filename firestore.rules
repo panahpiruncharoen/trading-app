@@ -7,16 +7,28 @@ service cloud.firestore {
       return str(d.firstName, 100) && str(d.lastName, 100)
         && str(d.country, 100) && str(d.phoneNumber, 30);
     }
+    // rules can't loop over lists, so each of the 5 slots is checked on its own
+    // keep in sync with the image paths in app/routes/post.tsx and storage.rules
+    function imageAt(d, postId, i) {
+      return d.images.size() <= i
+        || d.images[i] == 'images/' + d.uid + '/posts/' + postId + '/' + string(i);
+    }
+    function validImages(d, postId) {
+      return !('images' in d) || (d.images is list && d.images.size() <= 5
+        && imageAt(d, postId, 0) && imageAt(d, postId, 1) && imageAt(d, postId, 2)
+        && imageAt(d, postId, 3) && imageAt(d, postId, 4));
+    }
 
     match /posts/{postId} {
       allow read: if true;
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid','type','title','content','timestamp'])
+        && request.resource.data.keys().hasOnly(['uid','type','title','content','images','timestamp'])
         && request.resource.data.uid == request.auth.uid
         // keep in sync with app/lib/post-types.ts
         && request.resource.data.type in ['exchange', 'donation', 'request']
         && str(request.resource.data.title, 200)
         && str(request.resource.data.content, 5000)
+        && validImages(request.resource.data, postId)
         && request.resource.data.timestamp == request.time;
       allow update: if signedIn() && resource.data.uid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','content'])

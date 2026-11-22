@@ -5,6 +5,7 @@ import { initializeApp } from "firebase/app";
 import {getAuth} from "firebase/auth";
 import {getFirestore} from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
+import {getStorage} from "firebase/storage";
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA-3L0-LhJcux5XSU1xwcV-JXoS4V2wXuc",
@@ -33,3 +34,4 @@ if (typeof window !== "undefined" && recaptchaSiteKey) {
 
 export const auth = getAuth(app)
 export const db = getFirestore(app)
+export const storage = getStorage(app);

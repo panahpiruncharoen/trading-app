@@ -1,5 +1,6 @@
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, Timestamp } from "firebase/firestore";
 import { auth, db } from "~/lib/firebase"
+import { getImageUrls } from "~/lib/images"
 import { useContext } from "react";
 import { UserContext } from "~/lib/context"
 import type { Route } from "./+types/home";
@@ -45,15 +46,17 @@ export async function clientLoader() {
   const otherPosts = posts.docs.filter((post) => post.data().uid !== auth.currentUser?.uid)
   return Promise.all(otherPosts.map(async (post)=>{
     const data = post.data()
+    // posts made before images existed have none
+    const images = await getImageUrls(data.images)
     // users can only be read when signed in, see firestore.rules
     if (!auth.currentUser) {
-      return {...data, username: "Member"}
+      return {...data, images, username: "Member"}
     }
-    return {...data, username: await getUsername(data.uid)}
+    return {...data, images, username: await getUsername(data.uid)}
   }))
 }
 
-function Post({uid, username, type, title, timestamp, content}) {
+function Post({uid, username, type, title, timestamp, content, images}) {
   // posts made before types existed have no type
   const postType = getPostType(type)
   return(
@@ -74,6 +77,15 @@ function Post({uid, username, type, title, timestamp, content}) {
       <CardContent>
         <p className="font-semibold">{title}</p>
         {content}
+        {images.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {images.map((url) => (
+              <a key={url} href={url} target="_blank" rel="noreferrer">
+                <img src={url} alt="" className="size-24 rounded-lg border object-cover" />
+              </a>
+            ))}
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex-col gap-2">
         <Button type="submit" className="w-full">
@@ -121,7 +133,7 @@ export default function Home({loaderData}) {
       </div>
       <div className="w-full flex flex-col gap-4 items-center justify-center">
         {loaderData.map((post)=>{
-          return <Post uid={post.uid} username={post.username} type={post.type} title={post.title} timestamp={post.timestamp.toDate().toLocaleDateString("en-GB")} content={post.content}/>
+          return <Post uid={post.uid} username={post.username} type={post.type} title={post.title} timestamp={post.timestamp.toDate().toLocaleDateString("en-GB")} content={post.content} images={post.images}/>
         })}
       </div>
     </>

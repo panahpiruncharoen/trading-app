@@ -2,6 +2,7 @@ import type { Route } from "./+types/profile";
 import { NavLink, useNavigate, useSearchParams } from "react-router";
 import { redirect, Form } from "react-router";
 import { auth, db } from "~/lib/firebase"
+import { getImageUrls } from "~/lib/images"
 import { CountryList } from "~/lib/countries"
 import { updateProfile } from "firebase/auth";
 import { collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
@@ -41,16 +42,18 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
   const isBlocked = !isOwnProfile && (await getDoc(doc(db, "users", user.uid, "blocked", uid))).exists()
   // sorted here rather than with orderBy, which would need a composite index
   const postDocs = await getDocs(query(collection(db, "posts"), where("uid", "==", uid)))
-  const posts = postDocs.docs
+  const posts = await Promise.all(postDocs.docs
     .map((post) => ({ id: post.id, ...post.data() }))
     .sort((a, b) => (b.timestamp?.toMillis() ?? 0) - (a.timestamp?.toMillis() ?? 0))
-    .map((post) => ({
+    .map(async (post) => ({
       id: post.id,
       type: post.type,
       title: post.title ?? "",
       content: post.content ?? "",
+      // posts made before images existed have none
+      images: await getImageUrls(post.images),
       timestamp: post.timestamp?.toDate().toLocaleDateString("en-GB") ?? "",
-    }))
+    })))
   return {
     uid,
     isOwnProfile,
@@ -155,6 +158,7 @@ type ProfilePostProps = {
   title: string,
   timestamp: string,
   content: string,
+  images: string[],
   canEdit: boolean,
   isEditing: boolean,
   error: string | null | undefined,
@@ -162,7 +166,7 @@ type ProfilePostProps = {
   onCancel: () => void,
 }
 
-function ProfilePost({id, type, title, timestamp, content, canEdit, isEditing, error, onEdit, onCancel}: ProfilePostProps) {
+function ProfilePost({id, type, title, timestamp, content, images, canEdit, isEditing, error, onEdit, onCancel}: ProfilePostProps) {
   // posts made before types existed have no type
   const postType = getPostType(type)
   if (isEditing) {
@@ -222,6 +226,15 @@ function ProfilePost({id, type, title, timestamp, content, canEdit, isEditing, e
       </CardHeader>
       <CardContent>
         <p className="whitespace-pre-wrap">{content}</p>
+        {images.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {images.map((url) => (
+              <a key={url} href={url} target="_blank" rel="noreferrer">
+                <img src={url} alt="" className="size-24 rounded-lg border object-cover" />
+              </a>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
