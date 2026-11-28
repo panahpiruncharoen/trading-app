@@ -1,9 +1,9 @@
 import type { Route } from "./+types/post";
 import { NavLink } from "react-router";
-import { redirect, Form } from "react-router";
+import { redirect, Form, useNavigation } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { auth, db, storage } from "~/lib/firebase"
-import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { deleteObject, ref, uploadBytes } from "firebase/storage";
 import { LogoutButton } from "~/components/logout-button"
 import { Button } from "~/components/ui/button"
@@ -62,12 +62,29 @@ export async function clientAction({
   if (files.some((file) => !file.type.startsWith("image/") || file.size > MAX_IMAGE_SIZE)) {
     return "Images must be image files under 5 MB"
   }
-  // the id is made first so the images can be stored under it
-  const post = doc(collection(db, "posts"))
+  // the id is picked once per form, so a request sent twice targets the same post
+  const postId = String(formData.get("postId") ?? "")
+  if (!postId || postId.includes("/")) {
+    return "Could not create your post, please try again"
+  }
+  const post = doc(db, "posts", postId)
   // files are named by index, so storage.rules can cap a post at 5 images
   const images = files.map((_, i) => `images/${user.uid}/posts/${post.id}/${i}`)
+  // a post that already exists means this request was a repeat of one that succeeded
+  async function alreadyPosted() {
+    const existing = await getDoc(post).catch(() => null)
+    return existing?.exists() && existing.data().uid === user!.uid
+  }
+  if (await alreadyPosted()) {
+    return redirect("/profile")
+  }
+  // the rules only allow creating images and posts, never overwriting them, so a repeat can't make a second copy
+  const uploads = await Promise.allSettled(files.map((file, i) => uploadBytes(ref(storage, images[i]), file, { contentType: file.type })))
   try {
-    await Promise.all(files.map((file, i) => uploadBytes(ref(storage, images[i]), file, { contentType: file.type })))
+    const failed = uploads.find((upload) => upload.status === "rejected")
+    if (failed) {
+      throw failed.reason
+    }
     await setDoc(post, {
       uid: user.uid,
       type,
@@ -78,11 +95,18 @@ export async function clientAction({
     })
   } catch (error) {
     console.error(error)
-    // don't leave images behind for a post that was never made
-    await Promise.allSettled(images.map((path) => deleteObject(ref(storage, path))))
+    if (await alreadyPosted()) {
+      return redirect("/profile")
+    }
+    // don't leave images behind for a post that was never made, but only ones this request uploaded,
+    // as the others may belong to a repeat of this request that is still running
+    await Promise.allSettled(images
+      .filter((_, i) => uploads[i].status === "fulfilled")
+      .map((path) => deleteObject(ref(storage, path))))
     return "Could not create your post, please try again"
   }
-  return redirect("/");
+  // your own posts are shown on your profile, not the home page
+  return redirect("/profile");
 }
 
 export function meta({}: Route.MetaArgs) {
@@ -93,6 +117,10 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Post({ actionData }: Route.ComponentProps) {
+  // stays the same across retries, and a new one comes with the next visit to this page
+  const [postId] = useState(() => doc(collection(db, "posts")).id)
+  // stays disabled until the action has finished, so the post can't be sent twice
+  const posting = useNavigation().state !== "idle"
   const imagesInput = useRef<HTMLInputElement>(null)
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
@@ -144,6 +172,7 @@ export default function Post({ actionData }: Route.ComponentProps) {
           </CardDescription>
         </CardHeader>
         <Form method="post" encType="multipart/form-data">
+          <input type="hidden" name="postId" value={postId} />
           <CardContent>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
@@ -222,10 +251,10 @@ export default function Post({ actionData }: Route.ComponentProps) {
             </div>
           </CardContent>
           <CardFooter className="flex-col gap-2 mt-6">
-            <Button type="submit" className="w-full">
-              Post
+            <Button type="submit" className="w-full" disabled={posting}>
+              {posting ? "Posting..." : "Post"}
             </Button>
-            {actionData}
+            {!posting && actionData}
           </CardFooter>
         </Form>
       </Card>
