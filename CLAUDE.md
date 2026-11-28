@@ -52,6 +52,7 @@ Fields:
 - title: string
 - uid: string
 - type: string ("exchange", "donation", "request")
+- images: array[string] (image storage paths, max size = 5)
 
 ## Collections: chats
 
@@ -65,3 +66,7 @@ Fields:
 - content: string
 - from: string (uid of the sender)
 - to: string (uid of the receiver)
+
+# Image storage path pattern
+images/{uid}/posts/{postId}/{index}
+Notes: maximum images per post is 5. Files are named by their index (0-4), which is how storage.rules enforces the limit.

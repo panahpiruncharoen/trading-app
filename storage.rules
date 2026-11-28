@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// Craft rules based on data in your Firestore database
+// allow write: if firestore.get(
+//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
+service firebase.storage {
+  match /b/{bucket}/o {
+    // filenames are the image index 0-4, so a post can never hold more than 5 images
+    // keep in sync with app/routes/post.tsx
+    match /images/{uid}/posts/{postId}/{index} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && index.matches('[0-4]')
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size < 5 * 1024 * 1024;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
