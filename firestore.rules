@@ -60,7 +60,9 @@ service cloud.firestore {
 
     match /chats/{messageId} {
       allow read: if signedIn()
-        && request.auth.uid in [resource.data.from, resource.data.to];
+        // two separate equalities (not `in [from, to]`) so both the
+        // where('from', ==) and where('to', ==) queries can be proven against this rule
+        && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
       // getAfter on rateLimits only passes if it was updated in this same batch
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['chatId','content','from','to','timestamp'])
