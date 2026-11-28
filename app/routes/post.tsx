@@ -15,6 +15,15 @@ import {
 } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select"
+import { getPostType, PostTypeList } from "~/lib/post-types"
 
 export async function clientLoader() {
   await auth.authStateReady()
@@ -35,12 +44,14 @@ export async function clientAction({
   const formData = await request.formData();
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
-  if (!title || !content) {
+  const type = getPostType(formData.get("type"))?.value;
+  if (!title || !content || !type) {
     return "Please fill in all fields"
   }
   try {
     await addDoc(collection(db, "posts"), {
       uid: user.uid,
+      type,
       title,
       content,
       timestamp: serverTimestamp(),
@@ -74,12 +85,34 @@ export default function Post({ actionData }: Route.ComponentProps) {
         <CardHeader>
           <CardTitle>Create a post</CardTitle>
           <CardDescription>
-            Add a title and information for your post
+            Choose what kind of post this is, then add a title and information
           </CardDescription>
         </CardHeader>
         <Form method="post">
           <CardContent>
             <div className="flex flex-col gap-6">
+              <div className="grid gap-2">
+                <Label htmlFor="type">Type</Label>
+                <Select items={PostTypeList} name="type" required>
+                  <SelectTrigger id="type" className="w-[180px]">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {PostTypeList.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <ul className="text-sm text-muted-foreground">
+                  {PostTypeList.map((item) => (
+                    <li key={item.value}><span className="font-medium">{item.label}</span>: {item.hint}</li>
+                  ))}
+                </ul>
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="title">Title</Label>
                 <Input

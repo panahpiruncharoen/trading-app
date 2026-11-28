@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card"
+import { getPostType } from "~/lib/post-types"
 
 
 export function meta({}: Route.MetaArgs) {
@@ -40,7 +41,9 @@ export async function clientLoader() {
     }
     return usernames.get(uid)!
   }
-  return Promise.all(posts.docs.map(async (post)=>{
+  // your own posts are on your profile page instead
+  const otherPosts = posts.docs.filter((post) => post.data().uid !== auth.currentUser?.uid)
+  return Promise.all(otherPosts.map(async (post)=>{
     const data = post.data()
     // users can only be read when signed in, see firestore.rules
     if (!auth.currentUser) {
@@ -50,7 +53,9 @@ export async function clientLoader() {
   }))
 }
 
-function Post({uid, username, title, timestamp, content}) {
+function Post({uid, username, type, title, timestamp, content}) {
+  // posts made before types existed have no type
+  const postType = getPostType(type)
   return(
     <Card className="w-1/2">
       <CardHeader>
@@ -60,6 +65,11 @@ function Post({uid, username, title, timestamp, content}) {
         <CardDescription>
           Posted on {timestamp}
         </CardDescription>
+        {postType && (
+          <CardAction>
+            <span className="rounded-full border px-2.5 py-0.5 text-xs font-medium">{postType.label}</span>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
         <p className="font-semibold">{title}</p>
@@ -67,7 +77,7 @@ function Post({uid, username, title, timestamp, content}) {
       </CardContent>
       <CardFooter className="flex-col gap-2">
         <Button type="submit" className="w-full">
-          Accept
+          {postType?.accept ?? "Accept"}
         </Button>
         <Button variant="outline" className="w-full">
           Decline
@@ -111,7 +121,7 @@ export default function Home({loaderData}) {
       </div>
       <div className="w-full flex flex-col gap-4 items-center justify-center">
         {loaderData.map((post)=>{
-          return <Post uid={post.uid} username={post.username} title={post.title} timestamp={post.timestamp.toDate().toLocaleDateString("en-GB")} content={post.content}/>
+          return <Post uid={post.uid} username={post.username} type={post.type} title={post.title} timestamp={post.timestamp.toDate().toLocaleDateString("en-GB")} content={post.content}/>
         })}
       </div>
     </>
