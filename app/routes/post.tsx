@@ -1,7 +1,7 @@
 import type { Route } from "./+types/post";
 import { NavLink } from "react-router";
 import { redirect, Form } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { auth, db, storage } from "~/lib/firebase"
 import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { deleteObject, ref, uploadBytes } from "firebase/storage";
@@ -93,16 +93,36 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Post({ actionData }: Route.ComponentProps) {
+  const imagesInput = useRef<HTMLInputElement>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
-  // object urls hold the file in memory until revoked
-  useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews])
+  useEffect(() => {
+    const urls = files.map((file) => URL.createObjectURL(file))
+    setPreviews(urls)
+    // object urls hold the file in memory until revoked
+    return () => urls.forEach((url) => URL.revokeObjectURL(url))
+  }, [files])
+
+  // the input only holds its latest pick, so its files are replaced with every image chosen so far
+  function updateFiles(next: File[]) {
+    const input = imagesInput.current!
+    const transfer = new DataTransfer()
+    next.forEach((file) => transfer.items.add(file))
+    input.files = transfer.files
+    setFiles(next)
+  }
 
   function onImagesChange(event: React.ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget
-    const files = Array.from(input.files ?? [])
-    input.setCustomValidity(files.length > MAX_IMAGES ? `You can attach at most ${MAX_IMAGES} images` : "")
-    input.reportValidity()
-    setPreviews(files.slice(0, MAX_IMAGES).map((file) => URL.createObjectURL(file)))
+    const picked = Array.from(input.files ?? [])
+    const next = [...files, ...picked]
+    input.setCustomValidity("")
+    if (next.length > MAX_IMAGES) {
+      input.setCustomValidity(`You can attach at most ${MAX_IMAGES} images`)
+      input.reportValidity()
+      input.setCustomValidity("")
+    }
+    updateFiles(next.slice(0, MAX_IMAGES))
   }
 
   return <>
@@ -172,17 +192,29 @@ export default function Post({ actionData }: Route.ComponentProps) {
               <div className="grid gap-2">
                 <Label htmlFor="images">Images (up to {MAX_IMAGES})</Label>
                 <Input
+                  ref={imagesInput}
                   id="images"
                   type="file"
                   name="images"
                   accept="image/*"
                   multiple
+                  disabled={files.length >= MAX_IMAGES}
                   onChange={onImagesChange}
                 />
                 {previews.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {previews.map((url) => (
-                      <img key={url} src={url} alt="" className="size-20 rounded-lg border object-cover" />
+                    {previews.map((url, i) => (
+                      <div key={url} className="relative">
+                        <img src={url} alt="" className="size-20 rounded-lg border object-cover" />
+                        <button
+                          type="button"
+                          aria-label="Remove image"
+                          onClick={() => updateFiles(files.filter((_, j) => j !== i))}
+                          className="absolute -top-2 -right-2 size-5 rounded-full bg-black text-xs text-white"
+                        >
+                          ×
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
