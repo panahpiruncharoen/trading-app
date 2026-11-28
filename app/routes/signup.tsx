@@ -22,7 +22,7 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { auth, db } from "~/lib/firebase"
 import { CountryList } from "~/lib/countries"
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import { redirect, Form, Link } from "react-router";
@@ -55,9 +55,12 @@ export async function clientAction({
       lastName,
       country,
       phoneNumber,
-      email,
+      // must match the auth token's email exactly, see firestore.rules
+      email: user.email,
       createdAt: serverTimestamp(),
     })
+    // the account already exists at this point, so a failed email shouldn't fail the signup
+    await sendEmailVerification(user).catch(console.error)
   } catch (error) {
     if (error instanceof FirebaseError) {
       switch (error.code) {
@@ -67,6 +70,8 @@ export async function clientAction({
           return "Invalid email address"
         case "auth/weak-password":
           return "Password must be at least 6 characters"
+        case "auth/password-does-not-meet-requirements":
+          return "Password must be at least 8 characters with an uppercase letter, a lowercase letter and a number"
       }
     }
     return "Sign up failed, please try again"

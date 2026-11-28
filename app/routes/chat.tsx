@@ -5,7 +5,6 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { UserContext } from "~/lib/context"
 import { auth, db } from "~/lib/firebase"
 import {
-  addDoc,
   collection,
   doc,
   getDoc,
@@ -13,6 +12,7 @@ import {
   query,
   serverTimestamp,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { LogoutButton } from "~/components/logout-button"
 import { Bubble, BubbleContent, BubbleGroup } from "~/components/ui/bubble"
@@ -76,16 +76,20 @@ export async function clientAction({
     return { error: null }
   }
   try {
-    await addDoc(collection(db, "chats"), {
+    // the rules only accept a message together with its rate limit update
+    const batch = writeBatch(db)
+    batch.set(doc(collection(db, "chats")), {
       chatId: getChatId(user.uid, params.uid),
       content,
       from: user.uid,
       to: params.uid,
       timestamp: serverTimestamp(),
     })
+    batch.set(doc(db, "rateLimits", user.uid), { lastMessageAt: serverTimestamp() })
+    await batch.commit()
   } catch (error) {
     console.error(error)
-    return { error: "Could not send your message, please try again" }
+    return { error: "Message not sent. You may be sending messages too quickly, or this user isn't accepting messages from you" }
   }
   return { error: null }
 }
